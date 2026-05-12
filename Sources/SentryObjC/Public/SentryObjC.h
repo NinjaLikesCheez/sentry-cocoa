@@ -88,18 +88,19 @@
 #import "SentryLog.h"
 #import "SentryLogLevel.h"
 #import "SentryLogger.h"
-#import "SentryObjCSDK.h"
 #import "SentryOptions.h"
 #import "SentryReplayOptions.h"
+// `SentrySDK` and `SentryMetricsApi` are same-name ObjC facades for the
+// corresponding Swift classes. Header-only — the registered classes live in
+// the embedded Sentry framework (Swift). See `SentrySDK.h` for details.
+#import "SentryMetricsApi.h"
+#import "SentrySDK.h"
 
 // Envelope types (SPI for hybrid SDKs)
 #import "PrivateSentrySDKOnly.h"
 #import "SentryEnvelope.h"
 #import "SentryEnvelopeHeader.h"
 #import "SentryEnvelopeItem.h"
-
-// Protocols / facades for Swift-only APIs (stay in SentryObjC — behavior layer)
-#import "SentryMetricsApi.h"
 
 // Frozen public ObjC data carriers (from SentryObjCTypes).
 // Xcode frameworks expose them under `<SentryObjCTypes/...>`; SPM exposes the

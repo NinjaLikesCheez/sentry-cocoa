@@ -95,7 +95,7 @@ typedef SentryObjCMetric *_Nullable (^SentryBeforeSendMetricCallback)(
  * #import "SentryObjC.h"
  * @endcode
  *
- * @see SentryObjCSDK For the main SDK entry point.
+ * @see SentrySDK For the main SDK entry point.
  * @see SentryOptions For configuration options.
  */
 

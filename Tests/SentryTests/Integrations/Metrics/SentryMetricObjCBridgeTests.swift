@@ -1,25 +1,24 @@
 import Foundation
-
-#if SWIFT_PACKAGE
-@_spi(Private) @testable import SentrySwift
-#else
 @_spi(Private) @testable import Sentry
-#endif
-
-@testable import SentryObjCBridge
 import SentryObjCTypes
 import XCTest
 
-final class SentryObjCBridgeMetricConversionTests: XCTestCase {
+/// Tests for the inline Objective-C bridging that moved from the deleted
+/// `SentryObjCBridge` target into the Swift SDK itself:
+///
+/// - `SentryObjCMetric` ⇄ `SentryMetric` conversion (declared in
+///   `Sources/Swift/Integrations/Metrics/SentryObjCTypeConversions.swift`).
+/// - The `@objc(setBeforeSendMetric:)` setter on `Options` (declared in
+///   `Sources/Swift/Options.swift`), which wraps an ObjC-typed callback in
+///   a Swift closure that the SDK can invoke with native `SentryMetric`
+///   values.
+final class SentryMetricObjCBridgeTests: XCTestCase {
 
     func testMetricToObjC_shouldIncludeAllProperties() throws {
-        // -- Arrange --
         let metric = originalMetric()
 
-        // -- Act --
         let result = metric.toObjC()
 
-        // -- Assert --
         XCTAssertEqual(result.timestamp, metric.timestamp)
         XCTAssertEqual(result.name, metric.name)
         XCTAssertEqual(result.traceId, metric.traceId)
@@ -31,7 +30,6 @@ final class SentryObjCBridgeMetricConversionTests: XCTestCase {
     }
 
     func testMetricToSwift_shouldIncludeAllProperties() throws {
-        // -- Arrange --
         let timestamp = Date(timeIntervalSince1970: 123)
         let traceId = SentryId(uuidString: "12345678123456781234567812345678")
         let spanId = SpanId(value: "8765432112345678")
@@ -47,10 +45,8 @@ final class SentryObjCBridgeMetricConversionTests: XCTestCase {
             ]
         )
 
-        // -- Act --
         let result = metric.toSwift()
 
-        // -- Assert --
         XCTAssertEqual(result.timestamp, timestamp)
         XCTAssertEqual(result.name, "updated.metric")
         XCTAssertEqual(result.traceId, traceId)
@@ -61,13 +57,15 @@ final class SentryObjCBridgeMetricConversionTests: XCTestCase {
     }
 
     func testBeforeSendMetric_whenObjCCallbackMutatesMetric_shouldReturnMutatedSwiftMetric() throws {
-        // -- Arrange --
         let options = Options()
         let updatedTimestamp = Date(timeIntervalSince1970: 456)
         let updatedTraceId = SentryId(uuidString: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         let updatedSpanId = SpanId(value: "aaaaaaaaaaaaaaaa")
 
-        SentrySwiftBridge.bridgeBeforeSendMetric(forOptions: options) { metric in
+        // Set the ObjC-typed callback directly via the @objc(setBeforeSendMetric:)
+        // setter exposed by Sources/Swift/Options.swift. This replaces the call
+        // to the deleted `SentrySwiftBridge.bridgeBeforeSendMetric(forOptions:_:)`.
+        options._objcBeforeSendMetric = { metric in
             metric.timestamp = updatedTimestamp
             metric.name = "callback.metric"
             metric.traceId = updatedTraceId
@@ -77,14 +75,11 @@ final class SentryObjCBridgeMetricConversionTests: XCTestCase {
             metric.attributes = [
                 "source": SentryObjCAttributeContent.string(withValue: "callback")
             ]
-
             return metric
         }
 
-        // -- Act --
         let result = try XCTUnwrap(options.beforeSendMetric?(originalMetric()))
 
-        // -- Assert --
         XCTAssertEqual(result.timestamp, updatedTimestamp)
         XCTAssertEqual(result.name, "callback.metric")
         XCTAssertEqual(result.traceId, updatedTraceId)
@@ -92,6 +87,26 @@ final class SentryObjCBridgeMetricConversionTests: XCTestCase {
         XCTAssertEqual(result.value, .counter(10))
         XCTAssertEqual(result.unit, "item")
         XCTAssertEqual(result.attributes["source"]?.anyValue as? String, "callback")
+    }
+
+    func testBeforeSendMetric_whenObjCCallbackReturnsNil_shouldDropMetric() throws {
+        let options = Options()
+        options._objcBeforeSendMetric = { _ in nil }
+
+        let result = options.beforeSendMetric?(originalMetric())
+
+        XCTAssertNil(result ?? nil)
+    }
+
+    func testBeforeSendMetric_whenSetToNil_shouldClearSwiftCallback() throws {
+        let options = Options()
+        options._objcBeforeSendMetric = { metric in metric }
+        XCTAssertNotNil(options.beforeSendMetric)
+
+        options._objcBeforeSendMetric = nil
+
+        XCTAssertNil(options.beforeSendMetric)
+        XCTAssertNil(options._objcBeforeSendMetric)
     }
 
     private func originalMetric() -> SentryMetric {

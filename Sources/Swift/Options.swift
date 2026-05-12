@@ -1,4 +1,6 @@
 // swiftlint:disable file_length
+import SentryObjCTypes
+
 /// Configuration options for the Sentry SDK.
 @objc(SentryOptions) public final class Options: NSObject {
     
@@ -705,6 +707,31 @@
     /// Use this callback to drop or modify a metric before the SDK sends it to Sentry. Return nil to
     /// drop the metric.
     public var beforeSendMetric: ((SentryMetric) -> SentryMetric?)?
+
+    /// Storage for the original Objective-C `SentryBeforeSendMetricCallback` block, so the
+    /// ObjC-side getter can return what the consumer set (matches the legacy associated-object
+    /// behavior provided by the deleted `SentryOptionsObjCBridge.m`).
+    private var _beforeSendMetricObjCBlock: ((SentryObjCMetric) -> SentryObjCMetric?)?
+
+    /// Objective-C-typed accessor for `beforeSendMetric`. Visible to ObjC consumers (built with
+    /// or without modules) under the selectors `-beforeSendMetric` / `-setBeforeSendMetric:`.
+    /// Setting this property automatically writes a Swift wrapper closure into the canonical
+    /// `beforeSendMetric` storage so the SDK can invoke it with Swift `SentryMetric` values.
+    @objc(beforeSendMetric)
+    public var _objcBeforeSendMetric: ((SentryObjCMetric) -> SentryObjCMetric?)? {
+        get { _beforeSendMetricObjCBlock }
+        set {
+            _beforeSendMetricObjCBlock = newValue
+            if let objcBlock = newValue {
+                beforeSendMetric = { metric in
+                    guard let result = objcBlock(metric.toObjC()) else { return nil }
+                    return result.toSwift()
+                }
+            } else {
+                beforeSendMetric = nil
+            }
+        }
+    }
 }
 
 extension NSNumber {

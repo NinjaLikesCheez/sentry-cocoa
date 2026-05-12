@@ -7,38 +7,32 @@
 NS_ASSUME_NONNULL_BEGIN
 
 /**
- * Protocol for recording metrics (counters, distributions, and gauges) in Sentry.
+ * Pure-Objective-C facade for the Swift @c SentryMetricsApi class.
  *
- * This protocol provides an API for recording telemetry metrics that can be used
- * for monitoring application performance, tracking business metrics, and analyzing system behavior.
+ * @discussion Same "same-name" pattern as @c SentrySDK / @c SentryOptions.
+ * The Swift class is declared as
+ * @code @objc(SentryMetricsApi) public final class SentryMetricsApiObjCFacade: NSObject @endcode
+ * (Swift name @c SentryMetricsApiObjCFacade to disambiguate from the internal generic
+ * struct @c SentryMetricsApi). The ObjC runtime name is pinned to
+ * @c "SentryMetricsApi" so this hand-written @c \@interface declaration
+ * resolves at link time to the Swift implementation in @c SentrySwift /
+ * @c SentryObjCInternal. There is @b no @c \@implementation in the wrapper.
  *
- * Access via @c [SentryObjCSDK metrics].
+ * Access via @c [SentrySDK metrics].
  *
  * @see SentryObjCAttributeContent
  * @see SentryObjCUnit.h for predefined unit constants
  */
-@protocol SentryMetricsApi <NSObject>
+@interface SentryMetricsApi : NSObject
 
 /**
  * Records a count metric for the specified key.
  *
- * Use this to increment or set a discrete occurrence count associated with a metric key,
- * such as the number of events, requests, or errors.
- *
  * @param key A namespaced identifier for the metric (e.g., @c "network.request.count").
  *            Prefer stable, lowercase, dot-delimited names to aid aggregation and filtering.
- * @param value The count value to record. A non-negative integer (e.g., 1 to increment by one).
+ * @param value The count value to recodcrd.
  * @param attributes Optional dictionary of attributes to attach to the metric.
  *                   Keys are strings, values are @c SentryObjCAttributeContent instances.
- *                   Pass @c nil or empty dictionary if no attributes are needed.
- *
- * @code
- * [[SentryObjCSDK metrics] countWithKey:@"button.click"
- *                                  value:1
- *                             attributes:@{
- *     @"screen": [SentryObjCAttributeContent stringWithValue:@"home"]
- * }];
- * @endcode
  */
 - (void)countWithKey:(NSString *)key
                value:(NSUInteger)value
@@ -47,28 +41,10 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Records a distribution metric for the specified key.
  *
- * Use this to track the distribution of a value over time, such as response times,
- * request durations, or any measurable quantity where you want to analyze statistical
- * properties (mean, median, percentiles, etc.).
- *
- * @param key A namespaced identifier for the metric (e.g., @c "http.request.duration").
- *            Prefer stable, lowercase, dot-delimited names to aid aggregation and filtering.
- * @param value The value to record in the distribution. This can be any numeric value
- *              representing the measurement (e.g., milliseconds for response time).
+ * @param key A namespaced identifier for the metric.
+ * @param value The value to record in the distribution.
  * @param unit Optional unit of measurement (e.g., @c SentryObjCUnitNameMillisecond).
- *             Use constants from @c SentryObjCUnit.h or create custom units via @c
- * SentryObjCUnitWithName(). Pass @c nil if no unit is needed.
  * @param attributes Optional dictionary of attributes to attach to the metric.
- *                   Pass @c nil or empty dictionary if no attributes are needed.
- *
- * @code
- * [[SentryObjCSDK metrics] distributionWithKey:@"response.time"
- *                                         value:125.5
- *                                          unit:SentryObjCUnitNameMillisecond
- *                                    attributes:@{
- *     @"endpoint": [SentryObjCAttributeContent stringWithValue:@"/api/data"]
- * }];
- * @endcode
  */
 - (void)distributionWithKey:(NSString *)key
                       value:(double)value
@@ -79,28 +55,10 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Records a gauge metric for the specified key.
  *
- * Use this to track a value that can go up and down over time, such as current memory usage,
- * queue depth, active connections, or any metric that represents a current state rather
- * than an incrementing counter.
- *
- * @param key A namespaced identifier for the metric (e.g., @c "memory.usage", @c "queue.depth").
- *            Prefer stable, lowercase, dot-delimited names to aid aggregation and filtering.
- * @param value The current gauge value to record. This represents the state at the time of
- *              recording (e.g., current memory in bytes, current number of items in queue).
+ * @param key A namespaced identifier for the metric.
+ * @param value The current gauge value to record.
  * @param unit Optional unit of measurement (e.g., @c SentryObjCUnitNameByte).
- *             Use constants from @c SentryObjCUnit.h or create custom units via @c
- * SentryObjCUnitWithName(). Pass @c nil if no unit is needed.
  * @param attributes Optional dictionary of attributes to attach to the metric.
- *                   Pass @c nil or empty dictionary if no attributes are needed.
- *
- * @code
- * [[SentryObjCSDK metrics] gaugeWithKey:@"queue.depth"
- *                                  value:42
- *                                   unit:SentryObjCUnitWithName(@"items")
- *                             attributes:@{
- *     @"queue": [SentryObjCAttributeContent stringWithValue:@"upload"]
- * }];
- * @endcode
  */
 - (void)gaugeWithKey:(NSString *)key
                value:(double)value

@@ -82,9 +82,20 @@ targets += [
         path: "Sources/Sentry",
         sources: ["SentryDummyPrivateEmptyClass.m"],
         publicHeadersPath: "include"),
+    // Frozen public ObjC ABI — pure data carriers, depends only on Foundation.
+    // Lives in the core section (not the OBJC_WRAPPER block) because SentrySwift
+    // depends on it for the @objc setters that translate ObjC-typed callbacks
+    // (e.g. options.beforeSendMetric) into Swift closures.
+    .target(
+        name: "SentryObjCTypes",
+        path: "Sources/SentryObjCTypes",
+        publicHeadersPath: "Public",
+        cSettings: [
+            .headerSearchPath("Public")
+        ]),
     .target(
         name: "SentrySwift",
-        dependencies: ["_SentryPrivate", "SentryHeaders"],
+        dependencies: ["_SentryPrivate", "SentryHeaders", "SentryObjCTypes"],
         path: "Sources/Swift",
         swiftSettings: [
             .unsafeFlags(["-enable-library-evolution"]),
@@ -108,7 +119,6 @@ targets += [
             "SentryDistribution",
             "SentryDistributionTests",
             "SentryObjC",
-            "SentryObjCBridge",
             "SentryObjCTypes"
         ],
         cSettings: [
@@ -124,31 +134,16 @@ targets += [
 ]
 
 // BEGIN:OBJC_WRAPPER
-// Swift bridge that exposes SDK functionality to pure ObjC code (no modules)
-products.append(.library(name: "SentryObjC", targets: ["SentryObjCInternal", "SentryObjCTypes", "SentryObjCBridge", "SentryObjC"]))
+// Hand-written Objective-C headers exposing the Swift SDK to consumers built
+// with `-fmodules=NO` / `-fcxx-modules=NO`. Header-only — every `@interface`
+// here resolves at link time to the corresponding `@objc(SentryX)` Swift class
+// in `SentrySwift` / `SentryObjCInternal`. There is no separate `@implementation`
+// in this target, so there is no duplicate ObjC class registration.
+products.append(.library(name: "SentryObjC", targets: ["SentryObjCInternal", "SentryObjCTypes", "SentryObjC"]))
 targets += [
-    // Frozen public ObjC ABI — pure data carriers, depends only on Foundation.
-    // Both SentryObjCBridge and SentryObjC depend on this so they reference
-    // the same authoritative type declarations.
-    .target(
-        name: "SentryObjCTypes",
-        path: "Sources/SentryObjCTypes",
-        publicHeadersPath: "Public",
-        cSettings: [
-            .headerSearchPath("Public")
-        ]),
-    .target(
-        name: "SentryObjCBridge",
-        dependencies: ["SentryObjCInternal", "SentryObjCTypes"],
-        path: "Sources/SentryObjCBridge"),
-    .testTarget(
-        name: "SentryObjCBridgeTests",
-        dependencies: ["SentryObjCBridge", "SentryObjCTypes", "SentrySwift"],
-        path: "Tests/SentryObjCBridgeTests"),
-
     .target(
         name: "SentryObjC",
-        dependencies: ["SentryObjCInternal", "SentryObjCBridge", "SentryObjCTypes"],
+        dependencies: ["SentryObjCInternal", "SentryObjCTypes"],
         path: "Sources/SentryObjC",
         publicHeadersPath: "Public",
         cSettings: [

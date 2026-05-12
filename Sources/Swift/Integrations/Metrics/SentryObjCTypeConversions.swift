@@ -1,13 +1,7 @@
 import Foundation
 import SentryObjCTypes
 
-#if SWIFT_PACKAGE
-@_spi(Private) import SentrySwift
-#else
-@_spi(Private) import Sentry
-#endif
-
-// MARK: - SentryObjCAttributeContent
+// MARK: - SentryObjCAttributeContent ⇄ SentryAttributeContent
 
 extension SentryObjCAttributeContent {
     func toSwift() -> SentryAttributeContent {
@@ -41,7 +35,7 @@ extension SentryAttributeContent {
     }
 }
 
-// MARK: - SentryObjCMetricValue
+// MARK: - SentryObjCMetricValue ⇄ SentryMetricValue
 
 extension SentryMetricValue {
     func toObjC() -> SentryObjCMetricValue {
@@ -65,7 +59,7 @@ extension SentryObjCMetricValue {
     }
 }
 
-// MARK: - SentryObjCMetric
+// MARK: - SentryObjCMetric ⇄ SentryMetric
 
 extension SentryMetric {
     func toObjC() -> SentryObjCMetric {

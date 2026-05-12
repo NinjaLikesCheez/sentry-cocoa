@@ -361,6 +361,41 @@ public class SentryReplayOptions: NSObject, SentryRedactOptions {
      */
     public var networkDetailDenyUrls: [SentryUrlMatchable]
 
+    // MARK: - Objective-C bridges for `[SentryUrlMatchable]` properties.
+    //
+    // The `[SentryUrlMatchable]` arrays above are not `@objc`-representable
+    // (Swift protocol existential), so `@objcMembers` skips them silently.
+    // ObjC consumers (built with or without modules) need a way to set
+    // string/regex arrays via the same property name. The shadow `NSArray`
+    // properties below are exported under the ObjC selectors
+    // `-networkDetailAllowUrls` / `-setNetworkDetailAllowUrls:` (and the
+    // matching deny pair). The setter converts the incoming `NSArray` into
+    // `[SentryUrlMatchable]` via `SentryUrlMatcher.convertFromAny` and
+    // writes both the shadow (so the ObjC getter returns what the consumer
+    // set) and the canonical Swift property (so the SDK's matching logic
+    // sees the converted values).
+
+    private var _objcNetworkDetailAllowUrlsStorage: NSArray?
+    private var _objcNetworkDetailDenyUrlsStorage: NSArray?
+
+    @objc(networkDetailAllowUrls)
+    public var _objcNetworkDetailAllowUrls: NSArray {
+        get { _objcNetworkDetailAllowUrlsStorage ?? NSArray() }
+        set {
+            _objcNetworkDetailAllowUrlsStorage = newValue
+            networkDetailAllowUrls = SentryUrlMatcher.convertFromAny(newValue) ?? []
+        }
+    }
+
+    @objc(networkDetailDenyUrls)
+    public var _objcNetworkDetailDenyUrls: NSArray {
+        get { _objcNetworkDetailDenyUrlsStorage ?? NSArray() }
+        set {
+            _objcNetworkDetailDenyUrlsStorage = newValue
+            networkDetailDenyUrls = SentryUrlMatcher.convertFromAny(newValue) ?? []
+        }
+    }
+
     /**
      * Whether to capture request and response bodies for allowed URLs.
      *
